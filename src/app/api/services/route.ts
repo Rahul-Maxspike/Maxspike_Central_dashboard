@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { services, checkHtmlResponse } from '@/utils/portCheck'
+import { services as initialServices, checkHtmlResponse } from '@/utils/portCheck'
 
 // In-memory store for service statuses
-let serviceStatuses = services
+let serviceStatuses = initialServices
 
 export async function GET() {
     // Check all non-external services
@@ -24,17 +24,53 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-    const { serviceName, isOnline } = await request.json()
+    const { action, service, serviceName } = await request.json()
 
-    serviceStatuses = serviceStatuses.map(service =>
-        service.name === serviceName
-            ? {
+    switch (action) {
+        case 'add':
+            if (!service.name || !service.url) {
+                return NextResponse.json(
+                    { error: 'Name and URL are required' },
+                    { status: 400 }
+                )
+            }
+
+            // Check if service with same name already exists
+            if (serviceStatuses.some(s => s.name === service.name)) {
+                return NextResponse.json(
+                    { error: 'Service with this name already exists' },
+                    { status: 400 }
+                )
+            }
+
+            const newService = {
                 ...service,
-                isOnline,
+                port: service.port || 0,
+                isManualStatus: true,
+                isOnline: true,
                 lastChecked: new Date().toISOString()
             }
-            : service
-    )
+
+            serviceStatuses = [...serviceStatuses, newService]
+            break
+
+        case 'delete':
+            if (!serviceName) {
+                return NextResponse.json(
+                    { error: 'Service name is required' },
+                    { status: 400 }
+                )
+            }
+
+            serviceStatuses = serviceStatuses.filter(s => s.name !== serviceName)
+            break
+
+        default:
+            return NextResponse.json(
+                { error: 'Invalid action' },
+                { status: 400 }
+            )
+    }
 
     return NextResponse.json({ success: true, services: serviceStatuses })
 } 

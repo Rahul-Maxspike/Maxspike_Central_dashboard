@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { ServiceStatus } from '@/utils/portCheck'
+import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 
 export default function Home() {
   const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isUpdating, setIsUpdating] = useState<string | null>(null)
+  const router = useRouter()
 
   // Fetch initial status
   useEffect(() => {
@@ -28,32 +30,6 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [])
 
-  const toggleServiceStatus = async (serviceName: string) => {
-    const service = serviceStatuses.find(s => s.name === serviceName)
-    if (!service || service.isExternal) return
-
-    setIsUpdating(serviceName)
-    try {
-      const response = await fetch('/api/services', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          serviceName,
-          isOnline: !service.isOnline,
-        }),
-      })
-
-      const { services: updatedServices } = await response.json()
-      setServiceStatuses(updatedServices)
-    } catch (error) {
-      console.error('Failed to update service status:', error)
-    } finally {
-      setIsUpdating(null)
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -65,9 +41,25 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Service Status Dashboard</h1>
-          <p className="text-sm text-gray-600">Click status indicator to toggle</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 relative">
+              <Image
+                src="/assets/logo.jpeg"
+                alt="MaxSpike Logo"
+                fill
+                style={{ objectFit: 'contain' }}
+                priority
+              />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900">MaxSpike Central</h1>
+          </div>
+          <button
+            onClick={() => router.push('/admin')}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Admin Panel
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -89,16 +81,9 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-semibold text-gray-900">{service.name}</h2>
                   {!service.isExternal && (
-                    <button
-                      onClick={() => toggleServiceStatus(service.name)}
-                      disabled={isUpdating === service.name}
-                      className={`w-3 h-3 rounded-full cursor-pointer transition-transform hover:scale-125 ${isUpdating === service.name
-                          ? 'opacity-50 cursor-not-allowed'
-                          : service.isOnline
-                            ? 'bg-green-500'
-                            : 'bg-red-500'
+                    <div
+                      className={`w-3 h-3 rounded-full ${service.isOnline ? 'bg-green-500' : 'bg-red-500'
                         }`}
-                      title="Click to toggle status"
                     />
                   )}
                 </div>
@@ -121,11 +106,7 @@ export default function Home() {
                             service.isOnline ? 'text-green-600' : 'text-red-600'
                           }
                         >
-                          {isUpdating === service.name
-                            ? 'Updating...'
-                            : service.isOnline
-                              ? 'Online'
-                              : 'Offline'}
+                          {service.isOnline ? 'Online' : 'Offline'}
                         </span>
                       </>
                     )}

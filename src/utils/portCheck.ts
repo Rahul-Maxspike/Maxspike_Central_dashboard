@@ -143,7 +143,7 @@ export const services: ServiceStatus[] = [
     {
         name: 'OMS Docs',
         url: '110.172.21.62',
-        port: 5013,
+        port: 5004,
         isManualStatus: true,
         isOnline: true,
         lastChecked: new Date().toISOString(),
