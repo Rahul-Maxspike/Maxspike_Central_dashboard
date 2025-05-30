@@ -43,7 +43,10 @@ export default function Home() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 relative">
+            <div
+              className="w-12 h-12 relative cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => router.push('/')}
+            >
               <Image
                 src="/assets/logo.jpeg"
                 alt="MaxSpike Logo"
@@ -54,12 +57,23 @@ export default function Home() {
             </div>
             <h1 className="text-3xl font-bold text-gray-900">MaxSpike Central</h1>
           </div>
-          <button
-            onClick={() => router.push('/admin')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Admin Panel
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+                router.push('/login')
+              }}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              Logout
+            </button>
+            <button
+              onClick={() => router.push('/admin')}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Admin Panel
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -71,7 +85,8 @@ export default function Home() {
             return (
               <div
                 key={service.name}
-                className={`block p-6 rounded-lg shadow-lg ${service.isExternal
+                onClick={() => window.open(href, '_blank')}
+                className={`block p-6 rounded-lg shadow-lg cursor-pointer transition-transform hover:scale-[1.02] ${service.isExternal
                   ? 'bg-blue-50 border-blue-500'
                   : service.isOnline
                     ? 'bg-green-50 border-green-500'
@@ -89,7 +104,7 @@ export default function Home() {
                 </div>
 
                 {!service.isExternal && (
-                  <p className="mt-2 text-sm text-gray-600">
+                  <p className="mt-2 text-sm text-gray-700">
                     {service.url}:{service.port}
                   </p>
                 )}
@@ -97,13 +112,13 @@ export default function Home() {
                 <div className="mt-4 flex justify-between items-center">
                   <p className="text-sm font-medium">
                     {service.isExternal ? (
-                      <span className="text-blue-600">External Link</span>
+                      <span className="text-blue-800">External Link</span>
                     ) : (
                       <>
-                        Status:{' '}
+                        <span className="text-gray-900 font-semibold">Status</span>:{' '}
                         <span
                           className={
-                            service.isOnline ? 'text-green-600' : 'text-red-600'
+                            service.isOnline ? 'text-green-800' : 'text-red-800'
                           }
                         >
                           {service.isOnline ? 'Online' : 'Offline'}
@@ -112,14 +127,9 @@ export default function Home() {
                     )}
                   </p>
 
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-indigo-600 hover:text-indigo-800"
-                  >
-                    Open →
-                  </a>
+                  <span className="text-sm text-indigo-600 hover:text-indigo-800">
+                    Click to open →
+                  </span>
                 </div>
 
                 {service.lastChecked && (

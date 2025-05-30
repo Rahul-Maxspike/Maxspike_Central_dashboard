@@ -8,6 +8,7 @@ import Image from 'next/image'
 export default function AdminPage() {
     const [services, setServices] = useState<ServiceStatus[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    const [editingService, setEditingService] = useState<ServiceStatus | null>(null)
     const [newService, setNewService] = useState<Partial<ServiceStatus>>({
         name: '',
         url: '',
@@ -55,7 +56,13 @@ export default function AdminPage() {
                 },
                 body: JSON.stringify({
                     action: 'add',
-                    service: newService
+                    service: {
+                        ...newService,
+                        isExternal: newService.isExternal ?? false,
+                        externalUrl: newService.externalUrl ?? '',
+                        port: newService.port ?? 0,
+                        path: newService.path ?? '/'
+                    }
                 }),
             })
 
@@ -102,6 +109,74 @@ export default function AdminPage() {
         }
     }
 
+    const handleEditService = async (service: ServiceStatus) => {
+        setEditingService(service)
+        setNewService({
+            ...service,
+            isExternal: service.isExternal ?? false,
+            externalUrl: service.externalUrl ?? '',
+            port: service.port ?? 0,
+            path: service.path ?? '/'
+        })
+    }
+
+    const handleUpdateService = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editingService) return
+
+        try {
+            const response = await fetch('/api/services', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'update',
+                    serviceName: editingService.name,
+                    updatedService: {
+                        ...newService,
+                        isExternal: newService.isExternal ?? false,
+                        externalUrl: newService.externalUrl ?? '',
+                        port: newService.port ?? 0,
+                        path: newService.path ?? '/'
+                    }
+                }),
+            })
+
+            if (response.ok) {
+                const { services: updatedServices } = await response.json()
+                setServices(updatedServices)
+                setEditingService(null)
+                setNewService({
+                    name: '',
+                    url: '',
+                    port: 0,
+                    path: '/',
+                    isExternal: false,
+                    externalUrl: '',
+                    isManualStatus: true,
+                    isOnline: true
+                })
+            }
+        } catch (error) {
+            console.error('Failed to update service:', error)
+        }
+    }
+
+    const handleCancelEdit = () => {
+        setEditingService(null)
+        setNewService({
+            name: '',
+            url: '',
+            port: 0,
+            path: '/',
+            isExternal: false,
+            externalUrl: '',
+            isManualStatus: true,
+            isOnline: true
+        })
+    }
+
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -115,7 +190,10 @@ export default function AdminPage() {
             <div className="max-w-7xl mx-auto">
                 <div className="mb-8 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 relative">
+                        <div
+                            className="w-12 h-12 relative cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => router.push('/')}
+                        >
                             <Image
                                 src="/assets/logo.jpeg"
                                 alt="MaxSpike Logo"
@@ -126,17 +204,30 @@ export default function AdminPage() {
                         </div>
                         <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
                     </div>
-                    <button
-                        onClick={() => router.push('/')}
-                        className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                    >
-                        Back to Dashboard
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => {
+                                document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+                                router.push('/login')
+                            }}
+                            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                            Logout
+                        </button>
+                        <button
+                            onClick={() => router.push('/')}
+                            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                        >
+                            Back to Dashboard
+                        </button>
+                    </div>
                 </div>
 
                 <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-                    <h2 className="text-xl font-semibold mb-4">Add New Service</h2>
-                    <form onSubmit={handleAddService} className="space-y-4">
+                    <h2 className="text-xl font-semibold mb-4">
+                        {editingService ? 'Edit Service' : 'Add New Service'}
+                    </h2>
+                    <form onSubmit={editingService ? handleUpdateService : handleAddService} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-black">Name</label>
@@ -198,12 +289,21 @@ export default function AdminPage() {
                                 </div>
                             )}
                         </div>
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-2">
+                            {editingService && (
+                                <button
+                                    type="button"
+                                    onClick={handleCancelEdit}
+                                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                                >
+                                    Cancel
+                                </button>
+                            )}
                             <button
                                 type="submit"
                                 className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                             >
-                                Add Service
+                                {editingService ? 'Update Service' : 'Add Service'}
                             </button>
                         </div>
                     </form>
@@ -225,12 +325,20 @@ export default function AdminPage() {
                                             : `${service.url}${service.port ? `:${service.port}` : ''}${service.path}`}
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => handleDeleteService(service.name)}
-                                    className="px-3 py-1 text-sm text-red-600 hover:text-red-800 focus:outline-none"
-                                >
-                                    Delete
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => handleEditService(service)}
+                                        className="px-3 py-1 text-sm text-indigo-600 hover:text-indigo-800 focus:outline-none"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteService(service.name)}
+                                        className="px-3 py-1 text-sm text-red-600 hover:text-red-800 focus:outline-none"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>

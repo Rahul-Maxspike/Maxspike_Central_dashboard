@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-    const { action, service, serviceName } = await request.json()
+    const { action, service, serviceName, updatedService } = await request.json()
 
     switch (action) {
         case 'add':
@@ -52,6 +52,38 @@ export async function POST(request: Request) {
             }
 
             serviceStatuses = [...serviceStatuses, newService]
+            break
+
+        case 'update':
+            if (!serviceName || !updatedService) {
+                return NextResponse.json(
+                    { error: 'Service name and updated service data are required' },
+                    { status: 400 }
+                )
+            }
+
+            const serviceIndex = serviceStatuses.findIndex(s => s.name === serviceName)
+            if (serviceIndex === -1) {
+                return NextResponse.json(
+                    { error: 'Service not found' },
+                    { status: 404 }
+                )
+            }
+
+            // If name is being changed, check if new name already exists
+            if (updatedService.name && updatedService.name !== serviceName &&
+                serviceStatuses.some(s => s.name === updatedService.name)) {
+                return NextResponse.json(
+                    { error: 'Service with this name already exists' },
+                    { status: 400 }
+                )
+            }
+
+            serviceStatuses[serviceIndex] = {
+                ...serviceStatuses[serviceIndex],
+                ...updatedService,
+                lastChecked: new Date().toISOString()
+            }
             break
 
         case 'delete':
