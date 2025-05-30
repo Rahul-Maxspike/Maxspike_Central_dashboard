@@ -34,7 +34,7 @@ export async function checkHtmlResponse(url: string, port: number, path: string 
         return contentType?.includes('text/html') ||
             text.toLowerCase().includes('<!doctype html') ||
             text.toLowerCase().includes('<html')
-    } catch (error) {
+    } catch {
         return false
     }
 }
