@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+# MaxSpike Central
 
-First, run the development server:
+This is a **Next.js** application. Use this guide to install dependencies, build the project, and manage it in production with **PM2**.
+
+## 🚀 Getting Started
+
+### 1. Install Dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Build the Application
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npx next build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Start the Application with PM2
 
-## Learn More
+```bash
+pm2 start npm --name "maxspike-central" -- start
+```
 
-To learn more about Next.js, take a look at the following resources:
+> This starts the Next.js server using PM2 under the process name `maxspike-central`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Stop the Application
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pm2 stop maxspike-central
+```
 
-## Deploy on Vercel
+### 5. Save PM2 Process List (for startup persistence)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pm2 save
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This saves the current PM2 process list so it can be resurrected on server restart.
+
+---
+
+## 📂 Project Structure
+
+Common folders you may find in this Next.js project:
+
+* `pages/` – Your route-based React components.
+* `components/` – Reusable UI components.
+* `public/` – Static assets like images.
+* `styles/` – Global and modular CSS.
+
+---
+
+## ✅ Prerequisites
+
+* Node.js (v16+ recommended)
+* npm
+* [PM2](https://pm2.keymetrics.io/) globally installed:
+
+```bash
+npm install -g pm2
+```
+
+---
+
+## 🔁 Optional: Auto-Startup on Server Reboot
+
+To enable automatic restarts on system boot:
+
+```bash
+pm2 startup
+```
+
+Follow the on-screen instructions, then run:
+
+```bash
+pm2 save
+```
+
+---
+
