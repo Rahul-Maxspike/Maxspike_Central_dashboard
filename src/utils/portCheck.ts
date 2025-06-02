@@ -13,10 +13,20 @@ export interface ServiceStatus {
     position?: number
 }
 
+// Admin authentication interface
+export interface AdminAuth {
+    username: string;
+    password: string;
+}
+
 // MongoDB connection string - use environment variables with fallback
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://110.172.21.62:2717';
 const DB_NAME = process.env.MONGO_DB_NAME || 'Central_Dashboard';
 const COLLECTION_NAME = process.env.MONGO_COLLECTION_NAME || 'Paths';
+
+// Admin credentials - these must be entered for every admin page access
+const ADMIN_USERNAME = 'admin';
+const ADMIN_PASSWORD = '1212';
 
 // MongoDB client cache
 let cachedClient: MongoClient | null = null;
@@ -173,4 +183,19 @@ export async function checkDatabaseConnection(): Promise<boolean> {
         console.error('Error checking MongoDB connection:', error);
         return false;
     }
+}
+
+// Verify admin credentials
+export function verifyAdminCredentials(credentials: AdminAuth): boolean {
+    return credentials.username === ADMIN_USERNAME && credentials.password === ADMIN_PASSWORD;
+}
+
+// Check if admin is authenticated
+export function isAdminAuthenticated(adminToken?: string): boolean {
+    return adminToken === 'admin_authenticated';
+}
+
+// Generate admin auth token
+export function generateAdminToken(): string {
+    return 'admin_authenticated';
 }

@@ -42,16 +42,24 @@ function isSameNetwork(req: NextRequest): boolean {
 export function middleware(request: NextRequest) {
     const isLoggedIn = request.cookies.has('auth_token')
     const isLoginPage = request.nextUrl.pathname === '/login'
+    const isAdminPage = request.nextUrl.pathname === '/admin' || request.nextUrl.pathname.startsWith('/admin/')
     const isSameNetworkCheck = isSameNetwork(request)
     const requireLoginForLocal = process.env.REQUIRE_LOGIN_FOR_LOCAL === 'true'
+    
+    // Skip auth check for API routes
+    if (request.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.next()
+    }
 
+    // Don't redirect admin pages to login, they handle auth internally now
+    
     // If on login page and already logged in, redirect to home
     if (isLoginPage && isLoggedIn) {
         return NextResponse.redirect(new URL('/', request.url))
     }
 
-    // If not on login page and not logged in
-    if (!isLoginPage && !isLoggedIn) {
+    // If not on login page or admin page and not logged in
+    if (!isLoginPage && !isAdminPage && !isLoggedIn) {
         // If on same network and login not required for local, set auth token automatically
         if (isSameNetworkCheck && !requireLoginForLocal) {
             const response = NextResponse.next()
@@ -70,5 +78,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
-} 
+    matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+}

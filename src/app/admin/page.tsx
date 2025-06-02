@@ -72,6 +72,13 @@ function SortableItem({ service }: { service: ServiceStatus }) {
 }
 
 export default function AdminPage() {
+  // Add authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [authError, setAuthError] = useState('')
+  
+  // Existing state
   const [services, setServices] = useState<ServiceStatus[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingService, setEditingService] = useState<ServiceStatus | null>(null)
@@ -89,6 +96,20 @@ export default function AdminPage() {
   const [viewMode, setViewMode] = useState<'edit' | 'arrange'>('edit')
   const router = useRouter()
 
+  useEffect(() => {
+    const checkAdminAuth = () => {
+      // Get the admin_token cookie
+      const cookies = document.cookie.split(';').map(cookie => cookie.trim())
+      const adminToken = cookies.find(cookie => cookie.startsWith('admin_token='))?.split('=')[1]
+      
+      if (adminToken !== 'admin_authenticated') {
+        router.push('/admin/login')
+      }
+    }
+    
+    checkAdminAuth()
+  }, [router])
+
   // Setup DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -97,17 +118,38 @@ export default function AdminPage() {
     })
   );
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const response = await fetch('/api/auth/check')
-      if (!response.ok) {
-        router.push('/login?redirect=/admin')
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAuthError('')
+    
+    try {
+      const response = await fetch('/api/auth/admin/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        setIsAuthenticated(true)
+        setUsername('')
+        setPassword('')
+      } else {
+        setAuthError(data.error || 'Invalid credentials')
       }
+    } catch (error) {
+      setAuthError('An error occurred during authentication')
+      console.error('Authentication error:', error)
     }
-    checkAuth()
-  }, [router])
-
+  }
+  
+  // Only fetch services if authenticated
   useEffect(() => {
+    if (!isAuthenticated) return
+    
     const fetchServices = async () => {
       try {
         const response = await fetch('/api/services')
@@ -119,8 +161,9 @@ export default function AdminPage() {
         setIsLoading(false)
       }
     }
+    
     fetchServices()
-  }, [])
+  }, [isAuthenticated])
 
   const handleAddService = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -301,6 +344,86 @@ export default function AdminPage() {
       console.error('Error saving service positions:', error);
     }
   };
+
+  // Show authentication form if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
+          <div className="flex flex-col items-center">
+            <div className="w-32 h-32 relative mb-4">
+              <Image
+                src="/assets/logo.jpeg"
+                alt="MaxSpike Logo"
+                fill
+                style={{ objectFit: 'contain' }}
+                priority
+              />
+            </div>
+            <h2 className="text-center text-3xl font-extrabold text-gray-900">
+              Admin Login
+            </h2>
+          </div>
+          <form className="mt-8 space-y-6" onSubmit={handleAdminLogin}>
+            <div className="rounded-md shadow-sm -space-y-px">
+              <div>
+                <label htmlFor="username" className="sr-only">
+                  Username
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  required
+                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                  placeholder="Username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="sr-only">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {authError && (
+              <div className="text-red-500 text-sm text-center">{authError}</div>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Login as Admin
+              </button>
+            </div>
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => router.push('/')}
+                className="text-sm text-indigo-600 hover:text-indigo-500"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (
