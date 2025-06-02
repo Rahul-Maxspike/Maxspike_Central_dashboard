@@ -1,3 +1,5 @@
+import { MongoClient, Collection, Db } from 'mongodb';
+
 export interface ServiceStatus {
     name: string
     url: string
@@ -9,6 +11,127 @@ export interface ServiceStatus {
     lastChecked?: string
     path?: string
     position?: number
+}
+
+// MongoDB connection string - use environment variables with fallback
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://110.172.21.62:2717';
+const DB_NAME = process.env.MONGO_DB_NAME || 'Central_Dashboard';
+const COLLECTION_NAME = process.env.MONGO_COLLECTION_NAME || 'Paths';
+
+// MongoDB client cache
+let cachedClient: MongoClient | null = null;
+let cachedDb: Db | null = null;
+
+// Connect to MongoDB and return the client and database
+async function connectToDatabase(): Promise<{ client: MongoClient, db: Db }> {
+    if (cachedClient && cachedDb) {
+        return { client: cachedClient, db: cachedDb };
+    }
+
+    try {
+        const client = await MongoClient.connect(MONGO_URI);
+        const db = client.db(DB_NAME);
+        
+        cachedClient = client;
+        cachedDb = db;
+        
+        return { client, db };
+    } catch (error) {
+        console.error('MongoDB Connection Error:', error);
+        throw error;
+    }
+}
+
+// Get the services collection
+async function getCollection(): Promise<Collection<ServiceStatus>> {
+    const { db } = await connectToDatabase();
+    return db.collection<ServiceStatus>(COLLECTION_NAME);
+}
+
+// Fetch all services from MongoDB
+export async function getServices(): Promise<ServiceStatus[]> {
+    try {
+        const collection = await getCollection();
+        const services = await collection.find({}).sort({ position: 1 }).toArray();
+        
+        if (services.length === 0) {
+            console.warn('No services found in MongoDB database.');
+            return [];
+        }
+        
+        return services;
+    } catch (error) {
+        console.error('Error fetching services from MongoDB:', error);
+        return [];
+    }
+}
+
+// Update a service in MongoDB
+export async function updateService(serviceName: string, updatedService: Partial<ServiceStatus>): Promise<boolean> {
+    try {
+        const collection = await getCollection();
+        const result = await collection.updateOne(
+            { name: serviceName }, 
+            { $set: { ...updatedService, lastChecked: new Date().toISOString() } }
+        );
+        
+        return result.modifiedCount > 0;
+    } catch (error) {
+        console.error('Error updating service in MongoDB:', error);
+        return false;
+    }
+}
+
+// Add a new service to MongoDB
+export async function addService(service: ServiceStatus): Promise<boolean> {
+    try {
+        const collection = await getCollection();
+        
+        // Make sure it has a lastChecked date
+        if (!service.lastChecked) {
+            service.lastChecked = new Date().toISOString();
+        }
+        
+        const result = await collection.insertOne(service);
+        return !!result.insertedId;
+    } catch (error) {
+        console.error('Error adding service to MongoDB:', error);
+        return false;
+    }
+}
+
+// Delete a service from MongoDB
+export async function deleteService(serviceName: string): Promise<boolean> {
+    try {
+        const collection = await getCollection();
+        const result = await collection.deleteOne({ name: serviceName });
+        
+        return result.deletedCount > 0;
+    } catch (error) {
+        console.error('Error deleting service from MongoDB:', error);
+        return false;
+    }
+}
+
+// Update service positions in MongoDB
+export async function updateServicePositions(services: Pick<ServiceStatus, 'name' | 'position'>[]): Promise<boolean> {
+    try {
+        const collection = await getCollection();
+        
+        // Use a bulk write to update positions efficiently
+        const bulkOperations = services.map(service => ({
+            updateOne: {
+                filter: { name: service.name },
+                update: { $set: { position: service.position } }
+            }
+        }));
+        
+        const result = await collection.bulkWrite(bulkOperations);
+        return result.modifiedCount > 0;
+    } catch (error) {
+        console.error('Error updating service positions in MongoDB:', error);
+        return false;
+    }
 }
 
 export async function checkHtmlResponse(url: string, port: number, path: string = ''): Promise<boolean> {
@@ -40,126 +163,14 @@ export async function checkHtmlResponse(url: string, port: number, path: string 
     }
 }
 
-export const services: ServiceStatus[] = [
-    {
-        name: 'Trendlines Chart',
-        url: '110.172.21.62',
-        port: 5007,
-        isManualStatus: true,
-        isOnline: true,
-        lastChecked: new Date().toISOString(),
-        path: '/',
-        position: 0
-    },
-    {
-        name: 'M4A1',
-        url: '110.172.21.62',
-        port: 5008,
-        isManualStatus: true,
-        isOnline: true,
-        lastChecked: new Date().toISOString(),
-        path: '/',
-        position: 1
-    },
-    {
-        name: 'Motilal Dashboard',
-        url: '192.168.1.9',
-        port: 5015,
-        isManualStatus: true,
-        isOnline: true,
-        lastChecked: new Date().toISOString(),
-        path: '/',
-        position: 2
-    },
-    {
-        name: 'VWAP Dashboard',
-        url: '110.172.21.62',
-        port: 5004,
-        isManualStatus: true,
-        isOnline: true,
-        lastChecked: new Date().toISOString(),
-        path: '/',
-        position: 3
-    },
-    {
-        name: 'Credentials API',
-        url: '110.172.21.62',
-        port: 5005,
-        isManualStatus: true,
-        isOnline: true,
-        lastChecked: new Date().toISOString(),
-        path: '/',
-        position: 4
-    },
-    {
-        name: 'MaxSpike Client Master',
-        url: '110.172.21.62',
-        port: 5010,
-        isManualStatus: true,
-        isOnline: true,
-        lastChecked: new Date().toISOString(),
-        path: '/',
-        position: 5
-    },
-    {
-        name: 'Prop Daily PNL',
-        url: '',
-        port: 0,
-        isManualStatus: true,
-        isOnline: true,
-        isExternal: true,
-        externalUrl: 'https://docs.google.com/spreadsheets/d/1WNw1NkaBuy-L0K2DJ_JzmKXGlXPY4yAP8iE8Qk3ZTiU/edit?gid=0#gid=0',
-        lastChecked: new Date().toISOString(),
-        position: 6
-    },
-    {
-        name: 'Stocks NIFTY 50',
-        url: '192.168.1.9',
-        port: 5000,
-        isManualStatus: true,
-        isOnline: true,
-        lastChecked: new Date().toISOString(),
-        path: '/',
-        position: 7
-    },
-    {
-        name: 'All Stocks',
-        url: '192.168.1.9',
-        port: 5001,
-        isManualStatus: true,
-        isOnline: true,
-        lastChecked: new Date().toISOString(),
-        path: '/',
-        position: 8
-    },
-    {
-        name: 'F2F Dashboard',
-        url: '192.168.1.8',
-        port: 5123,
-        isManualStatus: true,
-        isOnline: true,
-        lastChecked: new Date().toISOString(),
-        path: '/',
-        position: 9
-    },
-    {
-        name: 'Range Beginx',
-        url: '192.168.1.8',
-        port: 9521,
-        isManualStatus: true,
-        isOnline: true,
-        lastChecked: new Date().toISOString(),
-        path: '/',
-        position: 10
-    },
-    {
-        name: 'OMS Docs',
-        url: '110.172.21.62',
-        port: 5004,
-        isManualStatus: true,
-        isOnline: true,
-        lastChecked: new Date().toISOString(),
-        path: '/docs',
-        position: 11
+// Check database connection and services
+export async function checkDatabaseConnection(): Promise<boolean> {
+    try {
+        const collection = await getCollection();
+        const count = await collection.countDocuments();
+        return count > 0;
+    } catch (error) {
+        console.error('Error checking MongoDB connection:', error);
+        return false;
     }
-]
+}

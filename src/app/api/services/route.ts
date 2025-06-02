@@ -1,26 +1,46 @@
 import { NextResponse } from 'next/server'
-import { services as initialServices, checkHtmlResponse } from '@/utils/portCheck'
-
-// In-memory store for service statuses
-let serviceStatuses = initialServices
+import { 
+    ServiceStatus, 
+    checkHtmlResponse, 
+    getServices, 
+    updateService,
+    addService, 
+    deleteService,
+    updateServicePositions
+} from '@/utils/portCheck'
 
 export async function GET() {
-    // Check all non-external services
-    const updatedServices = await Promise.all(
-        serviceStatuses.map(async (service) => {
-            if (service.isExternal) return service
+    try {
+        // Get all services from MongoDB
+        const services = await getServices();
+        
+        // Check all non-external services
+        const updatedServices = await Promise.all(
+            services.map(async (service: ServiceStatus) => {
+                if (service.isExternal) return service
 
-            const isOnline = await checkHtmlResponse(service.url, service.port, service.path)
-            return {
-                ...service,
-                isOnline,
-                lastChecked: new Date().toISOString()
-            }
-        })
-    )
-
-    serviceStatuses = updatedServices
-    return NextResponse.json(serviceStatuses)
+                const isOnline = await checkHtmlResponse(service.url, service.port, service.path);
+                if (service.isOnline !== isOnline) {
+                    // Update service status in database if it changed
+                    await updateService(service.name, { isOnline });
+                }
+                
+                return {
+                    ...service,
+                    isOnline,
+                    lastChecked: new Date().toISOString()
+                }
+            })
+        );
+        
+        return NextResponse.json(updatedServices);
+    } catch (error) {
+        console.error('Error in GET services:', error);
+        return NextResponse.json(
+            { error: 'Failed to fetch services' },
+            { status: 500 }
+        );
+    }
 }
 
 export async function POST(request: Request) {
@@ -29,7 +49,7 @@ export async function POST(request: Request) {
         const { action } = body
 
         switch (action) {
-            case 'add':
+            case 'add': {
                 if (!body.service.name || !body.service.url) {
                     return NextResponse.json(
                         { error: 'Name and URL are required' },
@@ -38,14 +58,15 @@ export async function POST(request: Request) {
                 }
 
                 // Check if service with same name already exists
-                if (serviceStatuses.some(s => s.name === body.service.name)) {
+                const services = await getServices();
+                if (services.some(s => s.name === body.service.name)) {
                     return NextResponse.json(
                         { error: 'Service with this name already exists' },
                         { status: 400 }
                     )
                 }
 
-                const newService = {
+                const newService: ServiceStatus = {
                     ...body.service,
                     port: body.service.port || 0,
                     isManualStatus: true,
@@ -53,10 +74,17 @@ export async function POST(request: Request) {
                     lastChecked: new Date().toISOString()
                 }
 
-                serviceStatuses = [...serviceStatuses, newService]
-                break
+                const success = await addService(newService);
+                if (!success) {
+                    return NextResponse.json(
+                        { error: 'Failed to add service' },
+                        { status: 500 }
+                    )
+                }
+                break;
+            }
 
-            case 'update':
+            case 'update': {
                 if (!body.serviceName || !body.updatedService) {
                     return NextResponse.json(
                         { error: 'Service name and updated service data are required' },
@@ -64,7 +92,9 @@ export async function POST(request: Request) {
                     )
                 }
 
-                const serviceIndex = serviceStatuses.findIndex(s => s.name === body.serviceName)
+                // Check if service exists
+                const services = await getServices();
+                const serviceIndex = services.findIndex(s => s.name === body.serviceName);
                 if (serviceIndex === -1) {
                     return NextResponse.json(
                         { error: 'Service not found' },
@@ -74,21 +104,24 @@ export async function POST(request: Request) {
 
                 // If name is being changed, check if new name already exists
                 if (body.updatedService.name && body.updatedService.name !== body.serviceName &&
-                    serviceStatuses.some(s => s.name === body.updatedService.name)) {
+                    services.some(s => s.name === body.updatedService.name)) {
                     return NextResponse.json(
                         { error: 'Service with this name already exists' },
                         { status: 400 }
                     )
                 }
 
-                serviceStatuses[serviceIndex] = {
-                    ...serviceStatuses[serviceIndex],
-                    ...body.updatedService,
-                    lastChecked: new Date().toISOString()
+                const success = await updateService(body.serviceName, body.updatedService);
+                if (!success) {
+                    return NextResponse.json(
+                        { error: 'Failed to update service' },
+                        { status: 500 }
+                    )
                 }
-                break
+                break;
+            }
 
-            case 'delete':
+            case 'delete': {
                 if (!body.serviceName) {
                     return NextResponse.json(
                         { error: 'Service name is required' },
@@ -96,11 +129,18 @@ export async function POST(request: Request) {
                     )
                 }
 
-                serviceStatuses = serviceStatuses.filter(s => s.name !== body.serviceName)
-                break
+                const success = await deleteService(body.serviceName);
+                if (!success) {
+                    return NextResponse.json(
+                        { error: 'Failed to delete service' },
+                        { status: 500 }
+                    )
+                }
+                break;
+            }
 
-            case 'updatePositions':
-                const { services } = body
+            case 'updatePositions': {
+                const { services } = body;
                 if (!Array.isArray(services)) {
                     return NextResponse.json(
                         { error: 'Invalid services data' },
@@ -108,18 +148,21 @@ export async function POST(request: Request) {
                     )
                 }
 
-                // Validate and update each service position
-                serviceStatuses = serviceStatuses.map(existingService => {
-                    const updatedService = services.find(s => s.name === existingService.name)
-                    if (updatedService && typeof updatedService.position === 'number') {
-                        return {
-                            ...existingService,
-                            position: updatedService.position
-                        }
-                    }
-                    return existingService
-                })
-                break
+                // Extract only name and position from the services array
+                const positionUpdates: Pick<ServiceStatus, 'name' | 'position'>[] = services.map(s => ({
+                    name: s.name,
+                    position: s.position
+                }));
+
+                const success = await updateServicePositions(positionUpdates);
+                if (!success) {
+                    return NextResponse.json(
+                        { error: 'Failed to update positions' },
+                        { status: 500 }
+                    )
+                }
+                break;
+            }
 
             default:
                 return NextResponse.json(
@@ -128,9 +171,11 @@ export async function POST(request: Request) {
                 )
         }
 
-        return NextResponse.json({ success: true, services: serviceStatuses })
+        // Return updated services after any action
+        const updatedServices = await getServices();
+        return NextResponse.json({ success: true, services: updatedServices })
     } catch (error) {
-        console.error('Error processing service request:', error)
+        console.error('Error processing service request:', error);
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }
