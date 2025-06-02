@@ -8,6 +8,7 @@ export interface ServiceStatus {
     externalUrl?: string
     lastChecked?: string
     path?: string
+    position?: number
 }
 
 export async function checkHtmlResponse(url: string, port: number, path: string = ''): Promise<boolean> {
@@ -47,7 +48,8 @@ export const services: ServiceStatus[] = [
         isManualStatus: true,
         isOnline: true,
         lastChecked: new Date().toISOString(),
-        path: '/'
+        path: '/',
+        position: 0
     },
     {
         name: 'M4A1',
@@ -56,7 +58,8 @@ export const services: ServiceStatus[] = [
         isManualStatus: true,
         isOnline: true,
         lastChecked: new Date().toISOString(),
-        path: '/'
+        path: '/',
+        position: 1
     },
     {
         name: 'Motilal Dashboard',
@@ -65,7 +68,8 @@ export const services: ServiceStatus[] = [
         isManualStatus: true,
         isOnline: true,
         lastChecked: new Date().toISOString(),
-        path: '/'
+        path: '/',
+        position: 2
     },
     {
         name: 'VWAP Dashboard',
@@ -74,7 +78,8 @@ export const services: ServiceStatus[] = [
         isManualStatus: true,
         isOnline: true,
         lastChecked: new Date().toISOString(),
-        path: '/'
+        path: '/',
+        position: 3
     },
     {
         name: 'Credentials API',
@@ -83,7 +88,8 @@ export const services: ServiceStatus[] = [
         isManualStatus: true,
         isOnline: true,
         lastChecked: new Date().toISOString(),
-        path: '/'
+        path: '/',
+        position: 4
     },
     {
         name: 'MaxSpike Client Master',
@@ -92,7 +98,8 @@ export const services: ServiceStatus[] = [
         isManualStatus: true,
         isOnline: true,
         lastChecked: new Date().toISOString(),
-        path: '/'
+        path: '/',
+        position: 5
     },
     {
         name: 'Prop Daily PNL',
@@ -102,7 +109,8 @@ export const services: ServiceStatus[] = [
         isOnline: true,
         isExternal: true,
         externalUrl: 'https://docs.google.com/spreadsheets/d/1WNw1NkaBuy-L0K2DJ_JzmKXGlXPY4yAP8iE8Qk3ZTiU/edit?gid=0#gid=0',
-        lastChecked: new Date().toISOString()
+        lastChecked: new Date().toISOString(),
+        position: 6
     },
     {
         name: 'Stocks NIFTY 50',
@@ -111,7 +119,8 @@ export const services: ServiceStatus[] = [
         isManualStatus: true,
         isOnline: true,
         lastChecked: new Date().toISOString(),
-        path: '/'
+        path: '/',
+        position: 7
     },
     {
         name: 'All Stocks',
@@ -120,7 +129,8 @@ export const services: ServiceStatus[] = [
         isManualStatus: true,
         isOnline: true,
         lastChecked: new Date().toISOString(),
-        path: '/'
+        path: '/',
+        position: 8
     },
     {
         name: 'F2F Dashboard',
@@ -129,7 +139,8 @@ export const services: ServiceStatus[] = [
         isManualStatus: true,
         isOnline: true,
         lastChecked: new Date().toISOString(),
-        path: '/'
+        path: '/',
+        position: 9
     },
     {
         name: 'Range Beginx',
@@ -138,7 +149,8 @@ export const services: ServiceStatus[] = [
         isManualStatus: true,
         isOnline: true,
         lastChecked: new Date().toISOString(),
-        path: '/'
+        path: '/',
+        position: 10
     },
     {
         name: 'OMS Docs',
@@ -147,6 +159,7 @@ export const services: ServiceStatus[] = [
         isManualStatus: true,
         isOnline: true,
         lastChecked: new Date().toISOString(),
-        path: '/docs'
+        path: '/docs',
+        position: 11
     }
-] 
+]

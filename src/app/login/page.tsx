@@ -15,7 +15,7 @@ export default function LoginPage() {
         setError('')
 
         // Hardcoded credentials check
-        if (username === 'admin' && password === '1212') {
+        if (username === 'admin' && password === '1234') {
             // Set auth cookie
             document.cookie = 'auth_token=authenticated; path=/; max-age=86400'
             router.push('/')

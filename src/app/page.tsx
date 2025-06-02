@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { ServiceStatus } from '@/utils/portCheck'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 
 export default function Home() {
   const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [filter, setFilter] = useState<'all' | 'online' | 'offline'>('all')
   const router = useRouter()
 
   // Fetch initial status
@@ -37,6 +38,17 @@ export default function Home() {
       </div>
     )
   }
+
+  // Filter and sort services based on selected filter and position
+  const filteredServices = serviceStatuses
+    .slice() // Create a copy to avoid mutating the original array
+    .sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity))
+    .filter(service => {
+      if (filter === 'all') return true;
+      if (filter === 'online') return service.isExternal || service.isOnline;
+      if (filter === 'offline') return !service.isExternal && !service.isOnline;
+      return true;
+    });
 
   return (
     <main className="min-h-screen bg-gray-50 p-8">
@@ -76,11 +88,40 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Filter Buttons */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-md focus:outline-none ${filter === 'all' 
+              ? 'bg-gray-800 text-white' 
+              : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
+          >
+            All Services
+          </button>
+          <button
+            onClick={() => setFilter('online')}
+            className={`px-4 py-2 rounded-md focus:outline-none ${filter === 'online' 
+              ? 'bg-green-600 text-white' 
+              : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
+          >
+            Online
+          </button>
+          <button
+            onClick={() => setFilter('offline')}
+            className={`px-4 py-2 rounded-md focus:outline-none ${filter === 'offline' 
+              ? 'bg-red-600 text-white' 
+              : 'bg-red-100 text-red-800 hover:bg-red-200'}`}
+          >
+            Offline
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {serviceStatuses.map((service) => {
+          {filteredServices.map((service) => {
+            // Fix the href construction to include path
             const href = service.isExternal
               ? service.externalUrl
-              : `http://${service.url}:${service.port}`
+              : `http://${service.url}:${service.port}${service.path || '/'}`;
 
             return (
               <div
@@ -105,7 +146,7 @@ export default function Home() {
 
                 {!service.isExternal && (
                   <p className="mt-2 text-sm text-gray-700">
-                    {service.url}:{service.port}
+                    {service.url}:{service.port}{service.path !== '/' ? service.path : ''}
                   </p>
                 )}
 
