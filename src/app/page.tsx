@@ -8,7 +8,7 @@ import Image from 'next/image'
 export default function Home() {
   const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'online' | 'offline'>('all')
+  const [filter, setFilter] = useState<'all' | 'online' | 'offline' | 'deprecated'>('all')
   const [useExternalUrl, setUseExternalUrl] = useState(false)
   const router = useRouter()
 
@@ -45,9 +45,10 @@ export default function Home() {
     .slice() // Create a copy to avoid mutating the original array
     .sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity))
     .filter(service => {
-      if (filter === 'all') return true;
-      if (filter === 'online') return service.isExternal || service.isOnline;
-      if (filter === 'offline') return !service.isExternal && !service.isOnline;
+      if (filter === 'all') return !service.isDeprecated;
+      if (filter === 'online') return !service.isDeprecated && (service.isExternal || service.isOnline);
+      if (filter === 'offline') return !service.isDeprecated && !service.isExternal && !service.isOnline;
+      if (filter === 'deprecated') return service.isDeprecated;
       return true;
     });
 
@@ -132,6 +133,14 @@ export default function Home() {
           >
             Offline
           </button>
+          <button
+            onClick={() => setFilter('deprecated')}
+            className={`px-4 py-2 rounded-md focus:outline-none ${filter === 'deprecated' 
+              ? 'bg-yellow-600 text-white' 
+              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'}`}
+          >
+            Deprecated
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -156,18 +165,26 @@ export default function Home() {
               <div
                 key={service.name}
                 onClick={() => {
-                  console.log('Redirecting to:', href); // Debug log
+                  console.log('Redirecting to:', href);
                   window.open(href, '_blank');
                 }}
-                className={`block p-6 rounded-lg shadow-lg cursor-pointer transition-transform hover:scale-[1.02] ${service.isExternal
-                  ? 'bg-blue-50 border-blue-500'
-                  : service.isOnline
-                    ? 'bg-green-50 border-green-500'
-                    : 'bg-red-50 border-red-500'
-                  } border-2`}
+                className={`block p-6 rounded-lg shadow-lg cursor-pointer transition-transform hover:scale-[1.02] ${
+                  service.isDeprecated
+                    ? 'bg-yellow-50 border-yellow-500'
+                    : service.isExternal
+                      ? 'bg-blue-50 border-blue-500'
+                      : service.isOnline
+                        ? 'bg-green-50 border-green-500'
+                        : 'bg-red-50 border-red-500'
+                } border-2`}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">{service.name}</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {service.name}
+                    {service.isDeprecated && (
+                      <span className="ml-2 text-sm text-yellow-600">(Deprecated)</span>
+                    )}
+                  </h2>
                   {!service.isExternal && (
                     <div
                       className={`w-3 h-3 rounded-full ${service.isOnline ? 'bg-green-500' : 'bg-red-500'

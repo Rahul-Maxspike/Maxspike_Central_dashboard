@@ -53,11 +53,13 @@ function SortableItem({
       ref={setNodeRef}
       style={style}
       className={`p-4 rounded-lg shadow border-l-4 mb-4 relative ${
-        service.isExternal
-          ? 'bg-blue-50 border-blue-500'
-          : service.isOnline
-          ? 'bg-green-50 border-green-500'
-          : 'bg-red-50 border-red-500'
+        service.isDeprecated
+          ? 'bg-yellow-50 border-yellow-500'
+          : service.isExternal
+            ? 'bg-blue-50 border-blue-500'
+            : service.isOnline
+              ? 'bg-green-50 border-green-500'
+              : 'bg-red-50 border-red-500'
       }`}
     >
       <div className="flex items-center justify-between">
@@ -70,7 +72,12 @@ function SortableItem({
             </span>
           )}
           <div>
-            <h3 className="font-medium text-lg text-black">{service.name}</h3>
+            <h3 className="font-medium text-lg text-black">
+              {service.name}
+              {service.isDeprecated && (
+                <span className="ml-2 text-sm text-yellow-600">(Deprecated)</span>
+              )}
+            </h3>
             <p className="text-sm text-black">
               {service.isExternal
                 ? `External URL: ${service.externalUrl || 'Not set'}`
@@ -131,12 +138,13 @@ function ServiceForm({
             <input
               type="text"
               required
-              className="mt-1 block w-full rounded-md border-black shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
               value={newService.name}
               onChange={(e) => setNewService({ ...newService, name: e.target.value })}
             />
           </div>
-          {!newService.isExternal ? (
+          
+          {!newService.isExternal && (
             <>
               <div>
                 <label className="block text-sm font-medium text-black">URL</label>
@@ -152,9 +160,10 @@ function ServiceForm({
                 <label className="block text-sm font-medium text-black">Port</label>
                 <input
                   type="number"
+                  required={!newService.isExternal}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
-                  value={newService.port || ''}
-                  onChange={(e) => setNewService({ ...newService, port: e.target.value ? parseInt(e.target.value) : 0 })}
+                  value={newService.port}
+                  onChange={(e) => setNewService({ ...newService, port: parseInt(e.target.value) || 0 })}
                 />
               </div>
               <div>
@@ -178,7 +187,7 @@ function ServiceForm({
                 />
               </div>
             </>
-          ) : null}
+          )}
           
           <div className="flex items-center">
             <input
@@ -188,6 +197,16 @@ function ServiceForm({
               onChange={(e) => setNewService({ ...newService, isExternal: e.target.checked })}
             />
             <label className="ml-2 block text-sm text-black">External Service</label>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+              checked={newService.isDeprecated}
+              onChange={(e) => setNewService({ ...newService, isDeprecated: e.target.checked })}
+            />
+            <label className="ml-2 block text-sm text-black">Deprecated Service</label>
           </div>
           
           {newService.isExternal && (
@@ -242,12 +261,13 @@ export default function AdminPage() {
     url: '',
     port: 0,
     path: '/',
-    localUrl: '',  // Changed from localPath to localUrl
+    localUrl: '',
     isExternal: false,
     externalUrl: '',
     isManualStatus: true,
     isOnline: true,
-    position: 0
+    position: 0,
+    isDeprecated: false
   })
   const router = useRouter()
 
@@ -398,12 +418,17 @@ export default function AdminPage() {
   const handleEditService = async (service: ServiceStatus) => {
     setEditingService(service)
     setNewService({
-      ...service,
-      isExternal: service.isExternal ?? false,
-      externalUrl: service.externalUrl ?? '',
-      port: service.port ?? 0,
-      path: service.path ?? '/',
-      localUrl: service.localUrl ?? ''  // Changed from localPath to localUrl
+      name: service.name || '',
+      url: service.url || '',
+      port: service.port || 0,
+      path: service.path || '/',
+      localUrl: service.localUrl || '',
+      isExternal: service.isExternal || false,
+      externalUrl: service.externalUrl || '',
+      isManualStatus: service.isManualStatus || true,
+      isOnline: service.isOnline || true,
+      position: service.position || 0,
+      isDeprecated: service.isDeprecated || false
     })
     
     // Scroll to the form
@@ -467,11 +492,13 @@ export default function AdminPage() {
       url: '',
       port: 0,
       path: '/',
-      localUrl: '',  // Changed from localPath to localUrl
+      localUrl: '',
       isExternal: false,
       externalUrl: '',
       isManualStatus: true,
-      isOnline: true
+      isOnline: true,
+      position: 0,
+      isDeprecated: false
     })
   }
 

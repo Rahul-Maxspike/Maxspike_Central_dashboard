@@ -12,6 +12,7 @@ export interface ServiceStatus {
     path?: string
     position?: number
     localUrl?: string  // Changed from localPath to localUrl
+    isDeprecated?: boolean  // Added deprecation flag
 }
 
 // Admin authentication interface
