@@ -48,6 +48,13 @@ export async function POST(request: Request) {
         const body = await request.json()
         const { action } = body
 
+        if (!action) {
+            return NextResponse.json(
+                { error: 'Action is required' },
+                { status: 400 }
+            )
+        }
+
         switch (action) {
             case 'add': {
                 if (!body.service.name || !body.service.url) {
@@ -81,7 +88,10 @@ export async function POST(request: Request) {
                         { status: 500 }
                     )
                 }
-                break;
+
+                // Return updated services list
+                const updatedServices = await getServices();
+                return NextResponse.json({ services: updatedServices });
             }
 
             case 'update': {
@@ -111,14 +121,20 @@ export async function POST(request: Request) {
                     )
                 }
 
-                const success = await updateService(body.serviceName, body.updatedService);
+                // Make sure we remove _id field before updating
+                const { _id, ...serviceWithoutId } = body.updatedService;
+                
+                const success = await updateService(body.serviceName, serviceWithoutId);
                 if (!success) {
                     return NextResponse.json(
                         { error: 'Failed to update service' },
                         { status: 500 }
                     )
                 }
-                break;
+
+                // Return updated services list
+                const updatedServices = await getServices();
+                return NextResponse.json({ services: updatedServices });
             }
 
             case 'delete': {
@@ -170,10 +186,6 @@ export async function POST(request: Request) {
                     { status: 400 }
                 )
         }
-
-        // Return updated services after any action
-        const updatedServices = await getServices();
-        return NextResponse.json({ success: true, services: updatedServices })
     } catch (error) {
         console.error('Error processing service request:', error);
         return NextResponse.json(

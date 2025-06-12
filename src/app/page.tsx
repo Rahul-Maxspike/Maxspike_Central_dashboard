@@ -9,6 +9,7 @@ export default function Home() {
   const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'online' | 'offline'>('all')
+  const [useExternalUrl, setUseExternalUrl] = useState(false)
   const router = useRouter()
 
   // Fetch initial status
@@ -69,22 +70,39 @@ export default function Home() {
             </div>
             <h1 className="text-3xl font-bold text-gray-900">MaxSpike Central</h1>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-                router.push('/login')
-              }}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              Logout
-            </button>
-            <button
-              onClick={() => router.push('/admin')}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Admin Panel
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Use External URLs</span>
+              <button
+                onClick={() => setUseExternalUrl(!useExternalUrl)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                  useExternalUrl ? 'bg-indigo-600' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    useExternalUrl ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+                  router.push('/login')
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Logout
+              </button>
+              <button
+                onClick={() => router.push('/admin')}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Admin Panel
+              </button>
+            </div>
           </div>
         </div>
 
@@ -118,15 +136,29 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredServices.map((service) => {
-            // Fix the href construction to include path
+            // Use localUrl when available for local services and useExternalUrl is false
             const href = service.isExternal
               ? service.externalUrl
-              : `http://${service.url}:${service.port}${service.path || '/'}`;
+              : useExternalUrl
+                ? `http://${service.url}:${service.port}${service.path || '/'}`
+                : service.localUrl 
+                  ? `http://${service.localUrl}:${service.port}${service.path || '/'}`
+                  : `http://${service.url}:${service.port}${service.path || '/'}`;
+
+            // Format the display URL without protocol
+            const displayUrl = useExternalUrl 
+              ? `${service.url}:${service.port}${service.path !== '/' ? service.path : ''}`
+              : service.localUrl 
+                ? `${service.localUrl}:${service.port}${service.path !== '/' ? service.path : ''}`
+                : `${service.url}:${service.port}${service.path !== '/' ? service.path : ''}`;
 
             return (
               <div
                 key={service.name}
-                onClick={() => window.open(href, '_blank')}
+                onClick={() => {
+                  console.log('Redirecting to:', href); // Debug log
+                  window.open(href, '_blank');
+                }}
                 className={`block p-6 rounded-lg shadow-lg cursor-pointer transition-transform hover:scale-[1.02] ${service.isExternal
                   ? 'bg-blue-50 border-blue-500'
                   : service.isOnline
@@ -146,7 +178,7 @@ export default function Home() {
 
                 {!service.isExternal && (
                   <p className="mt-2 text-sm text-gray-700">
-                    {service.url}:{service.port}{service.path !== '/' ? service.path : ''}
+                    {displayUrl}
                   </p>
                 )}
 

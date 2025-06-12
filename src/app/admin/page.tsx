@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ServiceStatus } from '@/utils/portCheck'
 import Image from 'next/image'
+import { toast, Toaster } from 'react-hot-toast'
 import {
   DndContext,
   closestCenter,
@@ -22,8 +23,18 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-// SortableItem component to be used in the list
-function SortableItem({ service }: { service: ServiceStatus }) {
+// SortableItem component with expanded functionality for inline editing
+function SortableItem({ 
+  service, 
+  onEdit, 
+  onDelete, 
+  isEditing 
+}: { 
+  service: ServiceStatus; 
+  onEdit: (service: ServiceStatus) => void;
+  onDelete: (serviceName: string) => void;
+  isEditing: boolean;
+}) {
   const {
     attributes,
     listeners,
@@ -41,9 +52,7 @@ function SortableItem({ service }: { service: ServiceStatus }) {
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className={`p-4 rounded-lg shadow border-l-4 flex items-center justify-between cursor-grab active:cursor-grabbing ${
+      className={`p-4 rounded-lg shadow border-l-4 mb-4 relative ${
         service.isExternal
           ? 'bg-blue-50 border-blue-500'
           : service.isOnline
@@ -51,22 +60,168 @@ function SortableItem({ service }: { service: ServiceStatus }) {
           : 'bg-red-50 border-red-500'
       }`}
     >
-      <div className="flex items-center">
-        <span className="mr-3 text-gray-500">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-          </svg>
-        </span>
-        <div>
-          <h3 className="font-medium">{service.name}</h3>
-          <p className="text-sm text-gray-500">
-            {service.isExternal
-              ? 'External Service'
-              : `${service.url}:${service.port}${service.path !== '/' ? service.path : ''}`
-            }
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          {!isEditing && (
+            <span className="mr-3 text-black" {...attributes} {...listeners}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+              </svg>
+            </span>
+          )}
+          <div>
+            <h3 className="font-medium text-lg text-black">{service.name}</h3>
+            <p className="text-sm text-black">
+              {service.isExternal
+                ? `External URL: ${service.externalUrl || 'Not set'}`
+                : `${service.url}:${service.port}${service.path !== '/' ? service.path : ''}`
+              }
+            </p>
+            {service.localUrl && (
+              <p className="text-sm text-black">
+                Local URL: {service.localUrl}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onEdit(service)}
+            className="px-3 py-1 text-sm bg-indigo-100 text-indigo-600 rounded hover:bg-indigo-200 transition-colors"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => onDelete(service.name)}
+            className="px-3 py-1 text-sm bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+          >
+            Delete
+          </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Service form component for adding/editing services
+function ServiceForm({ 
+  editingService, 
+  newService, 
+  setNewService, 
+  handleAddService, 
+  handleUpdateService, 
+  handleCancelEdit 
+}: {
+  editingService: ServiceStatus | null;
+  newService: Partial<ServiceStatus>;
+  setNewService: (service: Partial<ServiceStatus>) => void;
+  handleAddService: (e: React.FormEvent) => Promise<void>;
+  handleUpdateService: (e: React.FormEvent) => Promise<void>;
+  handleCancelEdit: () => void;
+}) {
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-6 mb-8 sticky top-4 z-10">
+      <h2 className="text-xl font-bold text-black mb-4">
+        {editingService ? `Edit Service: ${editingService.name}` : 'Add New Service'}
+      </h2>
+      <form onSubmit={editingService ? handleUpdateService : handleAddService} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-black">Name</label>
+            <input
+              type="text"
+              required
+              className="mt-1 block w-full rounded-md border-black shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
+              value={newService.name}
+              onChange={(e) => setNewService({ ...newService, name: e.target.value })}
+            />
+          </div>
+          {!newService.isExternal ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-black">URL</label>
+                <input
+                  type="text"
+                  required={!newService.isExternal}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
+                  value={newService.url}
+                  onChange={(e) => setNewService({ ...newService, url: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-black">Port</label>
+                <input
+                  type="number"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
+                  value={newService.port || ''}
+                  onChange={(e) => setNewService({ ...newService, port: e.target.value ? parseInt(e.target.value) : 0 })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-black">Path</label>
+                <input
+                  type="text"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
+                  value={newService.path}
+                  onChange={(e) => setNewService({ ...newService, path: e.target.value })}
+                  placeholder="/"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-black">Local URL (Optional)</label>
+                <input
+                  type="text"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
+                  value={newService.localUrl || ''}
+                  onChange={(e) => setNewService({ ...newService, localUrl: e.target.value })}
+                  placeholder="http://localhost:3000"
+                />
+              </div>
+            </>
+          ) : null}
+          
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              checked={newService.isExternal}
+              onChange={(e) => setNewService({ ...newService, isExternal: e.target.checked })}
+            />
+            <label className="ml-2 block text-sm text-black">External Service</label>
+          </div>
+          
+          {newService.isExternal && (
+            <div>
+              <label className="block text-sm font-medium text-black">External URL</label>
+              <input
+                type="url"
+                required={newService.isExternal}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
+                value={newService.externalUrl || ''}
+                onChange={(e) => setNewService({ ...newService, externalUrl: e.target.value })}
+                placeholder="https://example.com"
+              />
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2">
+          {editingService && (
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="submit"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            {editingService ? 'Update Service' : 'Add Service'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -87,13 +242,13 @@ export default function AdminPage() {
     url: '',
     port: 0,
     path: '/',
+    localUrl: '',  // Changed from localPath to localUrl
     isExternal: false,
     externalUrl: '',
     isManualStatus: true,
     isOnline: true,
     position: 0
   })
-  const [viewMode, setViewMode] = useState<'edit' | 'arrange'>('edit')
   const router = useRouter()
 
   useEffect(() => {
@@ -157,6 +312,7 @@ export default function AdminPage() {
         setServices(data)
       } catch (error) {
         console.error('Failed to fetch services:', error)
+        toast.error('Failed to load services')
       } finally {
         setIsLoading(false)
       }
@@ -180,7 +336,8 @@ export default function AdminPage() {
             isExternal: newService.isExternal ?? false,
             externalUrl: newService.externalUrl ?? '',
             port: newService.port ?? 0,
-            path: newService.path ?? '/'
+            path: newService.path ?? '/',
+            localUrl: newService.localUrl ?? ''  // Changed from localPath to localUrl
           }
         }),
       })
@@ -193,14 +350,20 @@ export default function AdminPage() {
           url: '',
           port: 0,
           path: '/',
+          localUrl: '',  // Changed from localPath to localUrl
           isExternal: false,
           externalUrl: '',
           isManualStatus: true,
           isOnline: true
         })
+        toast.success('Service added successfully!')
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to add service')
       }
     } catch (error) {
       console.error('Failed to add service:', error)
+      toast.error('Failed to add service')
     }
   }
 
@@ -222,9 +385,13 @@ export default function AdminPage() {
       if (response.ok) {
         const { services: updatedServices } = await response.json()
         setServices(updatedServices)
+        toast.success(`${serviceName} has been deleted`)
+      } else {
+        toast.error('Failed to delete service')
       }
     } catch (error) {
       console.error('Failed to delete service:', error)
+      toast.error('Failed to delete service')
     }
   }
 
@@ -235,8 +402,12 @@ export default function AdminPage() {
       isExternal: service.isExternal ?? false,
       externalUrl: service.externalUrl ?? '',
       port: service.port ?? 0,
-      path: service.path ?? '/'
+      path: service.path ?? '/',
+      localUrl: service.localUrl ?? ''  // Changed from localPath to localUrl
     })
+    
+    // Scroll to the form
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleUpdateService = async (e: React.FormEvent) => {
@@ -257,7 +428,8 @@ export default function AdminPage() {
             isExternal: newService.isExternal ?? false,
             externalUrl: newService.externalUrl ?? '',
             port: newService.port ?? 0,
-            path: newService.path ?? '/'
+            path: newService.path ?? '/',
+            localUrl: newService.localUrl ?? ''  // Changed from localPath to localUrl
           }
         }),
       })
@@ -271,14 +443,20 @@ export default function AdminPage() {
           url: '',
           port: 0,
           path: '/',
+          localUrl: '',  // Changed from localPath to localUrl
           isExternal: false,
           externalUrl: '',
           isManualStatus: true,
           isOnline: true
         })
+        toast.success('Service updated successfully!')
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to update service')
       }
     } catch (error) {
       console.error('Failed to update service:', error)
+      toast.error('Failed to update service')
     }
   }
 
@@ -289,6 +467,7 @@ export default function AdminPage() {
       url: '',
       port: 0,
       path: '/',
+      localUrl: '',  // Changed from localPath to localUrl
       isExternal: false,
       externalUrl: '',
       isManualStatus: true,
@@ -337,11 +516,14 @@ export default function AdminPage() {
         }),
       });
       
-      if (!response.ok) {
-        console.error('Failed to update service positions');
+      if (response.ok) {
+        toast.success('Service order updated')
+      } else {
+        toast.error('Failed to update service order')
       }
     } catch (error) {
       console.error('Error saving service positions:', error);
+      toast.error('Failed to update service order')
     }
   };
 
@@ -435,6 +617,7 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 p-8">
+      <Toaster position="top-right" />
       <div className="max-w-7xl mx-auto">
         {/* Header section */}
         <div className="mb-8 flex items-center justify-between">
@@ -456,8 +639,8 @@ export default function AdminPage() {
           <div className="flex gap-2">
             <button
               onClick={() => {
-                  document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-                  router.push('/login')
+                  document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+                  router.push('/')
               }}
               className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             >
@@ -472,185 +655,57 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* View mode toggle */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-black mb-4">Manage Services</h2>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setViewMode('edit')}
-                className={`px-4 py-2 rounded-md focus:outline-none ${
-                  viewMode === 'edit' 
-                    ? 'bg-indigo-600 text-white' 
-                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                }`}
-              >
-                Edit Services
-              </button>
-              <button
-                onClick={() => setViewMode('arrange')}
-                className={`px-4 py-2 rounded-md focus:outline-none ${
-                  viewMode === 'arrange' 
-                    ? 'bg-indigo-600 text-white' 
-                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                }`}
-              >
-                Arrange Services
-              </button>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left column: Form */}
+          <div>
+            <ServiceForm
+              editingService={editingService}
+              newService={newService}
+              setNewService={setNewService}
+              handleAddService={handleAddService}
+              handleUpdateService={handleUpdateService}
+              handleCancelEdit={handleCancelEdit}
+            />
           </div>
-        </div>
-
-        {viewMode === 'edit' ? (
-          <>
-            {/* Add/Edit service form */}
-            <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              <h2 className="text-xl font-bold text-black mb-4">
-                {editingService ? 'Edit Service' : 'Add New Service'}
-              </h2>
-              <form onSubmit={editingService ? handleUpdateService : handleAddService} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-black">Name</label>
-                    <input
-                      type="text"
-                      required
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
-                      value={newService.name}
-                      onChange={(e) => setNewService({ ...newService, name: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-black">URL</label>
-                    <input
-                      type="text"
-                      required
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
-                      value={newService.url}
-                      onChange={(e) => setNewService({ ...newService, url: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-black">Port (Optional)</label>
-                    <input
-                      type="number"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
-                      value={newService.port || ''}
-                      onChange={(e) => setNewService({ ...newService, port: e.target.value ? parseInt(e.target.value) : 0 })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-black">Path</label>
-                    <input
-                      type="text"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
-                      value={newService.path}
-                      onChange={(e) => setNewService({ ...newService, path: e.target.value })}
-                    />
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      checked={newService.isExternal}
-                      onChange={(e) => setNewService({ ...newService, isExternal: e.target.checked })}
-                    />
-                    <label className="ml-2 block text-sm text-black">External Service</label>
-                  </div>
-                  {newService.isExternal && (
-                    <div>
-                      <label className="block text-sm font-medium text-black">External URL</label>
-                      <input
-                        type="url"
-                        required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
-                        value={newService.externalUrl || ''}
-                        onChange={(e) => setNewService({ ...newService, externalUrl: e.target.value })}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="flex justify-end gap-2">
-                  {editingService && (
-                    <button
-                      type="button"
-                      onClick={handleCancelEdit}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          
+          {/* Right column: Services list with drag and drop */}
+          <div>
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-xl font-bold text-black mb-4">Service Order</h2>
+              <p className="text-black mb-4">Drag and drop services to change their order on the dashboard.</p>
+              
+              <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext 
+                  items={sortedServices.map(s => s.name)}
+                  strategy={verticalListSortingStrategy}
                 >
-                  {editingService ? 'Update Service' : 'Add Service'}
-                </button>
+                  <div className="space-y-2">
+                    {sortedServices.length === 0 ? (
+                      <div className="p-4 text-center text-black border border-dashed border-gray-300 rounded-lg">
+                        No services found. Add a service to get started.
+                      </div>
+                    ) : (
+                      sortedServices.map((service) => (
+                        <SortableItem 
+                          key={service.name} 
+                          service={service}
+                          onEdit={handleEditService}
+                          onDelete={handleDeleteService}
+                          isEditing={editingService?.name === service.name}
+                        />
+                      ))
+                    )}
+                  </div>
+                </SortableContext>
+              </DndContext>
             </div>
-          </form>
-        </div>
-
-        {/* Service list for editing */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-bold text-black mb-4">Manage Services</h2>
-          <div className="space-y-4">
-            {services.map((service) => (
-              <div
-                key={service.name}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-              >
-                <div>
-                  <h3 className="font-medium text-black">{service.name}</h3>
-                  <p className="text-sm text-black">
-                    {service.isExternal
-                        ? service.externalUrl
-                        : `${service.url}${service.port ? `:${service.port}` : ''}${service.path}`}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEditService(service)}
-                    className="px-3 py-1 text-sm text-indigo-600 hover:text-indigo-800 focus:outline-none"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteService(service.name)}
-                    className="px-3 py-1 text-sm text-red-600 hover:text-red-800 focus:outline-none"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
-      </>
-    ) : (
-      /* Arrange services section with @dnd-kit */
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-xl font-bold text-black mb-4">Arrange Services</h2>
-        <p className="mb-4 text-gray-600">Drag and drop services to change their order on the dashboard.</p>
-        
-        <DndContext 
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext 
-            items={sortedServices.map(s => s.name)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="space-y-2">
-              {sortedServices.map((service) => (
-                <SortableItem key={service.name} service={service} />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
       </div>
-    )}
-  </div>
-</main>
-);
+    </main>
+  );
 }

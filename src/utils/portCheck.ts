@@ -11,6 +11,7 @@ export interface ServiceStatus {
     lastChecked?: string
     path?: string
     position?: number
+    localUrl?: string  // Changed from localPath to localUrl
 }
 
 // Admin authentication interface
@@ -35,12 +36,26 @@ let cachedDb: Db | null = null;
 // Connect to MongoDB and return the client and database
 async function connectToDatabase(): Promise<{ client: MongoClient, db: Db }> {
     if (cachedClient && cachedDb) {
-        return { client: cachedClient, db: cachedDb };
+        try {
+            // Test the connection
+            await cachedDb.command({ ping: 1 });
+            return { client: cachedClient, db: cachedDb };
+        } catch (error) {
+            console.error('Cached connection failed, creating new connection:', error);
+            cachedClient = null;
+            cachedDb = null;
+        }
     }
 
     try {
-        const client = await MongoClient.connect(MONGO_URI);
+        const client = await MongoClient.connect(MONGO_URI, {
+            serverSelectionTimeoutMS: 5000,
+            connectTimeoutMS: 10000,
+        });
         const db = client.db(DB_NAME);
+        
+        // Test the connection
+        await db.command({ ping: 1 });
         
         cachedClient = client;
         cachedDb = db;
@@ -48,14 +63,19 @@ async function connectToDatabase(): Promise<{ client: MongoClient, db: Db }> {
         return { client, db };
     } catch (error) {
         console.error('MongoDB Connection Error:', error);
-        throw error;
+        throw new Error(`Failed to connect to MongoDB: ${error.message}`);
     }
 }
 
 // Get the services collection
 async function getCollection(): Promise<Collection<ServiceStatus>> {
-    const { db } = await connectToDatabase();
-    return db.collection<ServiceStatus>(COLLECTION_NAME);
+    try {
+        const { db } = await connectToDatabase();
+        return db.collection<ServiceStatus>(COLLECTION_NAME);
+    } catch (error) {
+        console.error('Error getting collection:', error);
+        throw new Error(`Failed to get collection: ${error.message}`);
+    }
 }
 
 // Fetch all services from MongoDB
@@ -80,9 +100,18 @@ export async function getServices(): Promise<ServiceStatus[]> {
 export async function updateService(serviceName: string, updatedService: Partial<ServiceStatus>): Promise<boolean> {
     try {
         const collection = await getCollection();
+        
+        // Remove _id from updatedService if it exists to prevent MongoDB error
+        const { _id, ...serviceWithoutId } = updatedService as any;
+        
+        const finalService = { 
+            ...serviceWithoutId,
+            lastChecked: new Date().toISOString() 
+        };
+        
         const result = await collection.updateOne(
             { name: serviceName }, 
-            { $set: { ...updatedService, lastChecked: new Date().toISOString() } }
+            { $set: finalService }
         );
         
         return result.modifiedCount > 0;
@@ -102,7 +131,14 @@ export async function addService(service: ServiceStatus): Promise<boolean> {
             service.lastChecked = new Date().toISOString();
         }
         
-        const result = await collection.insertOne(service);
+        // Convert localPath to localUrl if it exists
+        const { localPath, ...serviceData } = service as any;
+        const finalService = {
+            ...serviceData,
+            ...(localPath && { localUrl: localPath }) // Add localUrl instead of localPath
+        };
+        
+        const result = await collection.insertOne(finalService);
         return !!result.insertedId;
     } catch (error) {
         console.error('Error adding service to MongoDB:', error);
