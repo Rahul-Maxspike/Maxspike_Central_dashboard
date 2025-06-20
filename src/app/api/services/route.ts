@@ -19,7 +19,10 @@ export async function GET() {
             services.map(async (service: ServiceStatus) => {
                 if (service.isExternal) return service
 
-                const isOnline = await checkHtmlResponse(service.url, service.port, service.path);
+                // Use localUrl for health check if present
+                const checkUrl = service.localUrl || service.url;
+                console.log('Checking service at:', `http://${checkUrl}:${service.port}${service.path || ''}`);
+                const isOnline = await checkHtmlResponse(checkUrl, service.port, service.path);
                 if (service.isOnline !== isOnline) {
                     // Update service status in database if it changed
                     await updateService(service.name, { isOnline });
