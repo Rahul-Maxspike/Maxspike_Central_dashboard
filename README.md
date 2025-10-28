@@ -80,3 +80,41 @@ pm2 save
 
 ---
 
+##########
+if editied :
+algolinux@algolinux:~/Documents/workspace/GitHub/MaxSpike_Centeral_Dashboard$ pm2 stop endovia-central
+[PM2] Applying action stopProcessId on app [endovia-central](ids: [ 0 ])
+[PM2] [endovia-central](0) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 0  │ endovia-central    │ fork     │ 0    │ stopped   │ 0%       │ 0b       │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+algolinux@algolinux:~/Documents/workspace/GitHub/MaxSpike_Centeral_Dashboard$ pm2 delete endovia-central
+[PM2] Applying action deleteProcessId on app [endovia-central](ids: [ 0 ])
+[PM2] [endovia-central](0) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+algolinux@algolinux:~/Documents/workspace/GitHub/MaxSpike_Centeral_Dashboard$ pm2 delete maxspike-central
+[PM2][ERROR] Process or Namespace maxspike-central not found
+algolinux@algolinux:~/Documents/workspace/GitHub/MaxSpike_Centeral_Dashboard$ pm2 delete endovia-central
+[PM2][ERROR] Process or Namespace endovia-central not found
+algolinux@algolinux:~/Documents/workspace/GitHub/MaxSpike_Centeral_Dashboard$ pm2 start npm --name "endovia-wealth-central" -- start
+[PM2] Starting /usr/bin/npm in fork_mode (1 instance)
+[PM2] Done.
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 0  │ endovia-wealth-ce… │ fork     │ 0    │ online    │ 0%       │ 7.4mb    │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+algolinux@algolinux:~/Documents/workspace/GitHub/MaxSpike_Centeral_Dashboard$ pm2 save
+[PM2] Saving current process list...
+[PM2] Successfully saved in /home/algolinux/.pm2/dump.pm2
+algolinux@algolinux:~/Documents/workspace/GitHub/MaxSpike_Centeral_Dashboard$ pm2 list
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 0  │ endovia-wealth-ce… │ fork     │ 0    │ online    │ 0%       │ 69.8mb   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+algolinux@algolinux:~/Documents/workspace/GitHub/MaxSpike_Centeral_Dashboard$ 

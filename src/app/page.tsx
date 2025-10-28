@@ -62,7 +62,7 @@ export default function Home() {
               onClick={() => router.push('/')}
             >
               <Image
-                src="/assets/logo.jpeg"
+                src="/assets/endovia-logo.jpeg"
                 alt="MaxSpike Logo"
                 fill
                 style={{ objectFit: 'contain' }}

@@ -562,7 +562,7 @@ export default function AdminPage() {
           <div className="flex flex-col items-center">
             <div className="w-32 h-32 relative mb-4">
               <Image
-                src="/assets/logo.jpeg"
+                src="/assets/endovia-logo.jpeg"
                 alt="MaxSpike Logo"
                 fill
                 style={{ objectFit: 'contain' }}
@@ -654,7 +654,7 @@ export default function AdminPage() {
               onClick={() => router.push('/')}
             >
               <Image
-                src="/assets/logo.jpeg"
+                src="/assets/endovia-logo.jpeg"
                 alt="MaxSpike Logo"
                 fill
                 style={{ objectFit: 'contain' }}
