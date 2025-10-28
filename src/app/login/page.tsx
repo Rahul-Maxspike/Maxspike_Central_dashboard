@@ -31,7 +31,7 @@ export default function LoginPage() {
                     <div className="w-32 h-32 relative mb-4">
                         <Image
                             src="/assets/endovia-logo.jpeg"
-                            alt="MaxSpike Logo"
+                            alt="Endovia Logo"
                             fill
                             style={{ objectFit: 'contain' }}
                             priority

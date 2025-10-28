@@ -63,7 +63,7 @@ export default function Home() {
             >
               <Image
                 src="/assets/endovia-logo.jpeg"
-                alt="MaxSpike Logo"
+                alt="Endovia Logo"
                 fill
                 style={{ objectFit: 'contain' }}
                 priority
