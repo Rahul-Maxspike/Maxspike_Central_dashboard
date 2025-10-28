@@ -62,14 +62,14 @@ export default function Home() {
               onClick={() => router.push('/')}
             >
               <Image
-                src="/assets/logo.jpeg"
+                src="/assets/logo.jpg"
                 alt="MaxSpike Logo"
                 fill
                 style={{ objectFit: 'contain' }}
                 priority
               />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">MaxSpike Central</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Endovia Wealth Central</h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">

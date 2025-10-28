@@ -1,5 +1,5 @@
 
-# MaxSpike Central
+# Endovia Wealth Central
 
 This is a **Next.js** application. Use this guide to install dependencies, build the project, and manage it in production with **PM2**.
 

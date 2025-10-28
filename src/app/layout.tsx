@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "MaxSpike Central",
+  title: "Endovia Wealth Central",
   description: "Monitor the status of your services in real-time",
 };
 
