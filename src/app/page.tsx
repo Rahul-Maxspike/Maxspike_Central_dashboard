@@ -62,7 +62,7 @@ export default function Home() {
               onClick={() => router.push('/')}
             >
               <Image
-                src="/assets/logo.jpg"
+                src="/assets/logo.jpeg"
                 alt="MaxSpike Logo"
                 fill
                 style={{ objectFit: 'contain' }}
